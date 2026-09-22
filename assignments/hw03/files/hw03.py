@@ -34,9 +34,24 @@ def build_laplacian_pyramid(image: np.ndarray, levels: int) -> list[np.ndarray]:
     - The final list entry is the smallest Gaussian image.
     - IMPORTANT: Your implementation must work for odd and non-square image sizes.
     """
-    # TODO
-    raise NotImplementedError
+    #     - `image` is a 2-D np.float32 grayscale image with values in [0, 1].
+    G = [image.astype(np.float32)]
+    L = []
 
+    # - Keep all pyramid arrays as np.float32.
+    # - For each level, use cv2.pyrDown(..., borderType=cv2.BORDER_REFLECT).
+    # - Expand the coarse image with cv2.pyrUp(..., dstsize=previous_shape[::-1]).
+    for _ in range(levels):
+        coarse = cv2.pyrDown(G[-1], borderType=cv2.BORDER_REFLECT) 
+        fine = cv2.pyrUp(coarse, dstsize=G[-1].shape[::-1])
+        L.append(G[-1] - fine)
+        G.append(coarse)
+
+    # - Compute each residual as fine_image - expanded_coarse_image.
+    # - The final list entry is the smallest Gaussian image.
+    L.append(G[-1])
+    # - IMPORTANT: Your implementation must work for odd and non-square image sizes.
+    return L
 
 def reconstruct_laplacian_pyramid(pyramid: list[np.ndarray]) -> np.ndarray:
     """Reconstruct the finest image from a Laplacian pyramid.
@@ -44,9 +59,22 @@ def reconstruct_laplacian_pyramid(pyramid: list[np.ndarray]) -> np.ndarray:
     Start with the final coarse image. Repeatedly expand it to the size of the
     residual at the next finer level and add that residual. Return np.float32.
     """
-    # TODO
-    raise NotImplementedError
+    e = pyramid[-1]
 
+    for i in range(len(pyramid) -2, -1, -1):
+        # expand the coarse image
+        e = cv2.pyrUp(pyramid[i])
+
+        # match their size 
+        layer = pyramid[i]
+        size = layer.shape[1], layer.shape[0]
+        if (e.shape != size):
+            e = cv2.resize(e, size)
+
+        # add images
+        e = cv2.add(e, layer)
+
+    return e.astype(np.float32)
 
 def threshold_laplacian_pyramid(
     pyramid: list[np.ndarray], threshold: float
@@ -63,8 +91,13 @@ def threshold_laplacian_pyramid(
     A suitable independent copy for this list-of-arrays structure is:
         new_pyramid = [level.copy() for level in pyramid]
     """
-    # TODO
-    raise NotImplementedError
+    new_pyramid = [level.copy() for level in pyramid]
+
+    for level in new_pyramid[:-1]:
+        level[np.abs(level) < threshold] = 0.0
+
+    return new_pyramid
+        
 
 
 def residual_nonzero_fraction(pyramid: list[np.ndarray]) -> float:
@@ -73,8 +106,19 @@ def residual_nonzero_fraction(pyramid: list[np.ndarray]) -> float:
     Count coefficients only in pyramid[:-1]; the final coarse image is not
     included. Return a Python float in [0, 1].
     """
-    # TODO
-    raise NotImplementedError
+    # get the count of non zero levels
+    non_zero = 0
+    for level in pyramid[:-1]:
+        if np.count_nonzero(level):
+            non_zero += 1
+
+    # get the total count
+    total = 0
+    for level in pyramid[:-1]:
+        total += level.size
+
+    # return non zero / total to determine efficiency of algo 
+    return float(non_zero / total)
 
 
 # -----------------------------------------------------------------------------
