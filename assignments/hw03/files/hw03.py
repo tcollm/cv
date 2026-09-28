@@ -61,18 +61,14 @@ def reconstruct_laplacian_pyramid(pyramid: list[np.ndarray]) -> np.ndarray:
     """
     e = pyramid[-1]
 
-    for i in range(len(pyramid) -2, -1, -1):
-        # expand the coarse image
-        e = cv2.pyrUp(pyramid[i])
-
-        # match their size 
+    for i in range(len(pyramid) - 2, -1, -1):
         layer = pyramid[i]
         size = layer.shape[1], layer.shape[0]
-        if (e.shape != size):
-            e = cv2.resize(e, size)
+
+        e = cv2.pyrUp(e, dstsize=size)
 
         # add images
-        e = cv2.add(e, layer)
+        e = e + layer
 
     return e.astype(np.float32)
 
@@ -109,8 +105,7 @@ def residual_nonzero_fraction(pyramid: list[np.ndarray]) -> float:
     # get the count of non zero levels
     non_zero = 0
     for level in pyramid[:-1]:
-        if np.count_nonzero(level):
-            non_zero += 1
+        non_zero += np.count_nonzero(level)
 
     # get the total count
     total = 0
